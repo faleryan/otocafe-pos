@@ -24,17 +24,41 @@ function kpiCard(label, value, ikon, warna, sub) {
 let periodeAktif = '7hari';
 let bulanAktif = '';   // diisi 'YYYY-MM' saat pengguna membuka riwayat bulan tertentu
 
+/**
+ * Chart.js (±200 KB) hanya dibutuhkan di halaman Laporan, jadi tidak lagi
+ * dimuat saat aplikasi dibuka — kasir tidak perlu menunggunya sama sekali.
+ * Dimuat sekali, paralel dengan pengambilan data dashboard.
+ */
+let _janjiChartJs = null;
+function pastikanChartJs() {
+  if (window.Chart) return Promise.resolve();
+  if (_janjiChartJs) return _janjiChartJs;
+  _janjiChartJs = new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
+    el.async = true;
+    el.onload = () => resolve();
+    el.onerror = () => { _janjiChartJs = null; reject(new Error('Pustaka grafik gagal dimuat. Periksa koneksi internet.')); };
+    document.head.appendChild(el);
+  });
+  return _janjiChartJs;
+}
+
 async function muatDashboard(paksa) {
-  if (APP.cacheDashboard && !paksa) return renderDashboard(APP.cacheDashboard);
+  if (APP.cacheDashboard && !paksa && window.Chart) return renderDashboard(APP.cacheDashboard);
 
   skeleton('#kpiRow', 1);
   $('#insightList').innerHTML = '<li>Menghitung analisis…</li>';
   try {
-    const res = await apiCall('getDashboardData', {
-      periode: periodeAktif,
-      dari: periodeAktif === 'bulan' ? bulanAktif : '',
-      sampai: ''
-    });
+    // Data & pustaka grafik diambil bersamaan, bukan bergantian
+    const [res] = await Promise.all([
+      apiCall('getDashboardData', {
+        periode: periodeAktif,
+        dari: periodeAktif === 'bulan' ? bulanAktif : '',
+        sampai: ''
+      }),
+      pastikanChartJs().catch(err => toast('Grafik tidak tampil', err.message, 'warning'))
+    ]);
     APP.cacheDashboard = handleRes(res);
     renderDashboard(APP.cacheDashboard);
   } catch (err) {
@@ -87,10 +111,12 @@ function renderDashboard(d) {
   $('#insightList').innerHTML = (d.insights || []).map(i => '<li>' + esc(i) + '</li>').join('') ||
     '<li>Belum ada cukup data untuk dianalisis.</li>';
 
-  renderChartTren(d.seri);
-  renderChartTerlaris(d.terlaris);
-  renderChartDonat('chartMetode', d.perMetode);
-  renderChartDonat('chartKeluar', d.perKategoriKeluar);
+  if (window.Chart) {
+    renderChartTren(d.seri);
+    renderChartTerlaris(d.terlaris);
+    renderChartDonat('chartMetode', d.perMetode);
+    renderChartDonat('chartKeluar', d.perKategoriKeluar);
+  }
   renderLabaRugi(d);
   renderStokKritis(d.stokKritis);
 }

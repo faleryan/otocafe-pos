@@ -636,12 +636,21 @@ function isiFormPengaturan() {
   $('#infoPenyimpanan').innerHTML =
     '<b>Informasi Sistem</b><br>' +
     'Masuk sebagai <b>' + esc(APP.user.nama) + '</b> (' + esc(APP.user.role) + ')<br>' +
-    'Versi frontend: <b>' + esc(typeof APP_VERSION !== 'undefined' ? APP_VERSION : '-') + '</b><br>' +
+    'Versi frontend: <b>' + esc(typeof VERSI_FRONTEND !== 'undefined' ? VERSI_FRONTEND : '-') + '</b><br>' +
     'Backend: Apps Script REST API<br>' +
     '<span style="word-break:break-all;font-size:11px;color:var(--text-3)">' + esc(apiPendek) + '</span><br>' +
     'Database: Google Sheets <b>DB_Otocafe</b><br>' +
     'Menu aktif: <b>' + APP.menu.filter(m => m.aktif).length + '</b> · Bahan baku: <b>' + APP.bahan.length + '</b><br>' +
-    'Mode tampilan: <b>' + (document.documentElement.getAttribute('data-theme') === 'dark' ? 'Gelap' : 'Terang') + '</b>';
+    'Mode tampilan: <b>' + (document.documentElement.getAttribute('data-theme') === 'dark' ? 'Gelap' : 'Terang') + '</b>' +
+    '<div class="divider" style="margin:.9rem 0"></div>' +
+    '<b>Kecepatan Server</b><br>' +
+    '<span id="statKecepatan">' + ringkasKecepatan() + '</span>' +
+    '<button type="button" class="btn-ghost btn-sm-ember w-100 mt-2" id="btnTesKoneksi">' +
+      '<i class="bi bi-speedometer2"></i> Tes Kecepatan Koneksi</button>' +
+    '<div id="hasilTesKoneksi" class="mt-2"></div>';
+
+  const tombolTes = $('#btnTesKoneksi');
+  if (tombolTes) tombolTes.onclick = tesKecepatanKoneksi;
 }
 
 async function simpanPengaturanHandler(e) {
@@ -718,4 +727,53 @@ function previewStrukContoh() {
   };
   APP.strukTerakhir = contoh;
   tampilkanStruk(contoh);
+}
+
+
+// ════════════════════════════════════════════════════════════
+// BAGIAN 15B: DIAGNOSTIK KECEPATAN
+// ════════════════════════════════════════════════════════════
+
+/** Ringkasan durasi permintaan yang sudah terjadi di sesi ini. */
+function ringkasKecepatan() {
+  if (!STAT_API.length) return '<span class="text-muted-2">Belum ada data permintaan.</span>';
+  const arr = STAT_API.map(x => x.ms).sort((a, b) => a - b);
+  const median = arr[Math.floor(arr.length / 2)];
+  const terlambat = STAT_API.slice().sort((a, b) => b.ms - a.ms)[0];
+  return 'Median <b>' + angka(median) + ' ms</b> dari ' + arr.length + ' permintaan terakhir<br>' +
+         '<span style="font-size:11px;color:var(--text-3)">Paling lambat: ' + esc(terlambat.action) +
+         ' (' + angka(terlambat.ms) + ' ms)</span>';
+}
+
+/**
+ * Kirim 3 ping berturut-turut. Ping pertama sering lebih lambat karena server
+ * Apps Script "bangun" dulu (cold start); ping ke-2 dan ke-3 mencerminkan
+ * kecepatan normal jaringan + Google.
+ */
+async function tesKecepatanKoneksi() {
+  const btn = $('#btnTesKoneksi'), out = $('#hasilTesKoneksi');
+  setLoadingBtn(btn, true, 'Menguji…');
+  const hasil = [];
+  try {
+    for (let i = 0; i < 3; i++) {
+      const t0 = performance.now();
+      const res = await apiCall('ping');
+      if (!res || !res.success) throw new Error((res && res.message) || 'Ping gagal');
+      hasil.push(Math.round(performance.now() - t0));
+    }
+    const normal = Math.round((hasil[1] + hasil[2]) / 2);
+    const nilai = normal < 1200 ? ['Baik', 'var(--tertiary)']
+                : normal < 2500 ? ['Wajar untuk Apps Script', 'var(--secondary)']
+                : ['Lambat — periksa jaringan', 'var(--danger)'];
+    out.innerHTML = '<div class="mutasi-info" style="margin:0">' +
+      'Ping: ' + hasil.map(ms => angka(ms) + ' ms').join(' · ') + '<br>' +
+      'Kecepatan normal: <b style="color:' + nilai[1] + '">' + angka(normal) + ' ms — ' + nilai[0] + '</b>' +
+      (hasil[0] > normal * 1.8 ? '<br><span style="font-size:11px">Ping pertama lebih lambat: server sedang "bangun" (wajar).</span>' : '') +
+      '</div>';
+    $('#statKecepatan').innerHTML = ringkasKecepatan();
+  } catch (err) {
+    out.innerHTML = '<div class="login-error" style="margin:0">' + esc(err.message) + '</div>';
+  } finally {
+    setLoadingBtn(btn, false);
+  }
 }

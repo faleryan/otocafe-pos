@@ -1,4 +1,4 @@
-# Otocafe POS — Frontend
+# Otocafe POS — Frontend (v2.1)
 
 Aplikasi kasir & manajemen **Otocafe**: penjualan, stok bahan baku, HPP, hutang pelanggan,
 dan laporan laba rugi. Halaman ini adalah **frontend statis** — seluruh data diambil dari
@@ -52,6 +52,12 @@ tekan **Ctrl+Shift+R**.
 | Admin | Seluruh modul |
 | Owner | Laporan, dashboard, dan melihat daftar hutang |
 | Kasir | Kasir, riwayat transaksi hari ini miliknya, menerima pelunasan hutang |
+
+## Catatan kecepatan (v2.1)
+
+Login cukup 1 permintaan ke server, aplikasi yang sudah login tampil seketika dari data
+terakhir, dan stok terbaru ikut dikirim bersama struk. Uji kecepatan koneksi ada di
+**Atur → Informasi Sistem → Tes Kecepatan Koneksi**.
 
 ## Teknologi
 

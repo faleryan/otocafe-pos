@@ -96,17 +96,43 @@ function navigateTo(nav) {
 // BAGIAN 16: RINGKASAN SHIFT & JAM
 // ════════════════════════════════════════════════════════════
 
+/** Ambil ringkasan shift dari server (dipakai bila data lokal perlu diselaraskan). */
 function perbaruiRingkasanShift() {
   apiCall('getRingkasanKasir').then(res => {
     if (!res || !res.success) return;
-    const d = res.data;
-    $('#shiftOmzet').textContent = rupiah(d.kasMasuk !== undefined ? d.kasMasuk : d.omzet);
-    $('#shiftTrx').textContent = d.jmlTrx + ' struk · ' + angka(d.jmlItem) + ' porsi' +
-      (d.hutangBaru > 0 ? ' · hutang ' + rupiah(d.hutangBaru) : '');
-    const pill = $('#shiftPill');
-    if (pill) pill.title = 'Kas masuk hari ini' +
-      (d.hutangBaru > 0 ? ' (omzet ' + rupiah(d.omzet) + ', ' + rupiah(d.hutangBaru) + ' berupa hutang)' : '');
+    tampilkanRingkasan(res.data);
   }).catch(() => {});
+}
+
+/** Tulis ringkasan shift ke pil di topbar. */
+function tampilkanRingkasan(d) {
+  if (!d) return;
+  APP.ringkasan = d;
+  $('#shiftOmzet').textContent = rupiah(d.kasMasuk !== undefined ? d.kasMasuk : d.omzet);
+  $('#shiftTrx').textContent = d.jmlTrx + ' struk · ' + angka(d.jmlItem) + ' porsi' +
+    (d.hutangBaru > 0 ? ' · hutang ' + rupiah(d.hutangBaru) : '');
+  const pill = $('#shiftPill');
+  if (pill) pill.title = 'Kas masuk hari ini' +
+    (d.hutangBaru > 0 ? ' (omzet ' + rupiah(d.omzet) + ', ' + rupiah(d.hutangBaru) + ' berupa hutang)' : '');
+}
+
+/**
+ * Perbarui ringkasan shift secara lokal setelah transaksi berhasil — tanpa
+ * menunggu server. Angkanya dihitung dari struk yang baru saja dikonfirmasi
+ * server, jadi tetap akurat; penyelarasan penuh terjadi saat data awal dimuat ulang.
+ */
+function tambahRingkasanLokal(struk) {
+  const d = Object.assign({ omzet: 0, jmlTrx: 0, jmlItem: 0, hutangBaru: 0, pelunasan: 0, kasMasuk: 0 },
+                          APP.ringkasan || {});
+  const total = Number(struk.total) || 0;
+  const porsi = (struk.items || []).reduce((a, i) => a + (Number(i.qty) || 0), 0);
+  d.omzet    = bulatkan(d.omzet + total);
+  d.jmlTrx   = d.jmlTrx + 1;
+  d.jmlItem  = bulatkan(d.jmlItem + porsi, 3);
+  if (struk.metodeBayar === 'Hutang') d.hutangBaru = bulatkan(d.hutangBaru + total);
+  d.kasMasuk = bulatkan(d.omzet - d.hutangBaru + (d.pelunasan || 0));
+  d.rataStruk = d.jmlTrx ? bulatkan(d.omzet / d.jmlTrx) : 0;
+  tampilkanRingkasan(d);
 }
 
 function mulaiJam() {

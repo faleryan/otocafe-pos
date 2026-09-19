@@ -419,9 +419,15 @@ async function prosesBayar() {
           struk.hutang ? 'warning' : 'success');
     if (struk.hutang) APP.cacheHutang = null;
 
-    // Segarkan stok & ringkasan di latar belakang (tidak memblokir UI)
-    segarkanMasterDiamDiam();
-    perbaruiRingkasanShift();
+    // Backend v2.1 mengembalikan stok terbaru bersama struk -> perbarui porsi
+    // tersedia & ringkasan shift secara lokal, tanpa 2 permintaan tambahan.
+    if (struk.sinkron && struk.sinkron.stok) {
+      terapkanStokTerbaru(struk.sinkron.stok);
+      tambahRingkasanLokal(struk);
+    } else {
+      segarkanMasterDiamDiam();   // backend versi lama
+      perbaruiRingkasanShift();
+    }
     APP.cacheRiwayat = [];
     APP.cacheDashboard = null;
   } catch (err) {
@@ -437,15 +443,45 @@ async function prosesBayar() {
 function segarkanMasterDiamDiam() {
   apiCall('bootstrap').then(res => {
     if (!res || !res.success) return;
-    APP.menu     = res.data.menu || APP.menu;
-    APP.bahan    = res.data.bahan || APP.bahan;
-    APP.resep    = res.data.resep || APP.resep;
-    APP.kategori = res.data.kategori || APP.kategori;
-    APP.config   = res.data.config || APP.config;
+    terapkanBootstrap(res.data, true);
+    if (res.data.ringkasan) tampilkanRingkasan(res.data.ringkasan);
     if (APP.navAktif === 'kasir') { renderHero(); renderKategori(); renderMenuGrid(); }
     if (APP.navAktif === 'stok')  renderBahan();
     tandaiSinkron();
   }).catch(() => {});
+}
+
+/**
+ * Pakai stok terbaru dari server (dikirim bersama struk) lalu hitung ulang
+ * porsi tersedia tiap menu — rumusnya sama persis dengan hitungHppSemuaMenu di backend.
+ */
+function terapkanStokTerbaru(stokBaru) {
+  APP.bahan.forEach(b => { if (stokBaru[b.id] !== undefined) b.stok = Number(stokBaru[b.id]); });
+  hitungPorsiLokal();
+
+  // Simpan juga ke data awal di perangkat agar tampilan seketika berikutnya akurat
+  try {
+    const x = JSON.parse(lsGet(LS.BOOT, 'null'));
+    if (x && x.data) { x.data.bahan = APP.bahan; x.data.menu = APP.menu; lsSet(LS.BOOT, JSON.stringify(x)); }
+  } catch (e) {}
+
+  if (APP.navAktif === 'kasir') { renderHero(); renderKategori(); renderMenuGrid(); }
+  if (APP.navAktif === 'stok' && typeof renderBahan === 'function') renderBahan();
+  tandaiSinkron();
+}
+
+/** Porsi tersedia = bahan paling terbatas; menu tanpa resep dianggap selalu ada (999). */
+function hitungPorsiLokal() {
+  const stok = {};
+  APP.bahan.forEach(b => stok[b.id] = Number(b.stok) || 0);
+  const porsi = {};
+  APP.resep.forEach(r => {
+    const jml = Number(r.jumlah) || 0;
+    if (jml <= 0) return;
+    const mampu = Math.floor((stok[r.idBahan] || 0) / jml);
+    if (porsi[r.idMenu] === undefined || mampu < porsi[r.idMenu]) porsi[r.idMenu] = mampu;
+  });
+  APP.menu.forEach(m => { m.porsiTersedia = (porsi[m.id] === undefined) ? 999 : porsi[m.id]; });
 }
 
 let strukModal = null;

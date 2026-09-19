@@ -38,7 +38,14 @@ const APP = {
   sheetOpen: false
 };
 
-const LS = { TOKEN: 'oto_token', THEME: 'oto_theme', CART: 'oto_cart', META: 'oto_cart_meta' };
+const LS = { TOKEN: 'oto_token', THEME: 'oto_theme', CART: 'oto_cart', META: 'oto_cart_meta', BOOT: 'oto_boot' };
+
+// Versi frontend. Ditaruh di sini (bukan di config.js) supaya pembaruan tidak
+// pernah mengharuskan Anda menimpa config.js yang berisi alamat API Anda.
+const VERSI_FRONTEND = '2.1.0';
+
+// Catatan kecepatan permintaan terakhir — ditampilkan di halaman Pengaturan
+const STAT_API = [];
 
 // Hak akses navigasi per peran (cermin dari RBAC di backend)
 const NAV_ACCESS = {
@@ -96,6 +103,10 @@ const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
  * @param {string} tokenKhusus   token alternatif (dipakai saat logout)
  * @return {Promise<{success:boolean,data:*,message:string}>}
  */
+// Action yang aman diulang otomatis bila koneksi putus (hanya membaca data)
+const AKSI_BOLEH_ULANG = { ping: 1, info: 1, bootstrap: 1, getTransaksi: 1, getRingkasanKasir: 1,
+  getMutasiStok: 1, getPengeluaran: 1, getHutang: 1, getRiwayatBayarHutang: 1, getDashboardData: 1, getPengguna: 1 };
+
 async function apiCall(action, params, tokenKhusus) {
   if (!window.GAS_URL || String(GAS_URL).indexOf('/exec') === -1) {
     throw new Error('Alamat API belum diatur. Buka berkas js/config.js lalu isi GAS_URL '
@@ -108,40 +119,58 @@ async function apiCall(action, params, tokenKhusus) {
     params: params || {}
   });
 
-  // Batas waktu agar UI tidak menggantung bila jaringan mati di tengah jalan
-  const pembatal = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-  const pewaktu = pembatal ? setTimeout(() => pembatal.abort(), API_TIMEOUT_MS) : null;
+  // Permintaan baca diulang SEKALI bila gagal di jaringan — sering terjadi saat
+  // Apps Script "dingin" setelah lama tidak dipakai. Permintaan tulis (transaksi,
+  // pembayaran) sengaja TIDAK diulang agar tidak tercatat dua kali.
+  const bolehUlang = !!AKSI_BOLEH_ULANG[action];
+  let percobaan = 0;
 
-  let res;
-  try {
-    res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: isi,
-      redirect: 'follow',
-      signal: pembatal ? pembatal.signal : undefined
-    });
-  } catch (err) {
-    if (err && err.name === 'AbortError') {
-      throw new Error('Server tidak merespons lebih dari ' + Math.round(API_TIMEOUT_MS / 1000)
-                    + ' detik. Periksa koneksi internet Anda.');
+  while (true) {
+    percobaan++;
+    const mulai = (window.performance && performance.now) ? performance.now() : Date.now();
+    const pembatal = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const pewaktu = pembatal ? setTimeout(() => pembatal.abort(), API_TIMEOUT_MS) : null;
+
+    let res;
+    try {
+      res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: isi,
+        redirect: 'follow',
+        signal: pembatal ? pembatal.signal : undefined
+      });
+    } catch (err) {
+      if (pewaktu) clearTimeout(pewaktu);
+      if (bolehUlang && percobaan < 2) { await new Promise(r => setTimeout(r, 700)); continue; }
+      if (err && err.name === 'AbortError') {
+        throw new Error('Server tidak merespons lebih dari ' + Math.round(API_TIMEOUT_MS / 1000)
+                      + ' detik. Periksa koneksi internet Anda.');
+      }
+      throw new Error('Tidak dapat menghubungi server. Periksa koneksi internet, '
+                    + 'atau pastikan alamat API di js/config.js sudah benar.');
     }
-    throw new Error('Tidak dapat menghubungi server. Periksa koneksi internet, '
-                  + 'atau pastikan alamat API di js/config.js sudah benar.');
-  } finally {
     if (pewaktu) clearTimeout(pewaktu);
-  }
 
-  const teks = await res.text();
-  try {
-    return JSON.parse(teks);
-  } catch (e) {
-    if (/<html/i.test(teks)) {
-      throw new Error('Server mengembalikan halaman web, bukan data. Biasanya karena deployment '
-                    + 'Apps Script belum disetel "Who has access: Anyone", atau URL /exec salah.');
+    const teks = await res.text();
+    catatKecepatan(action, mulai);
+    try {
+      return JSON.parse(teks);
+    } catch (e) {
+      if (/<html/i.test(teks)) {
+        throw new Error('Server mengembalikan halaman web, bukan data. Biasanya karena deployment '
+                      + 'Apps Script belum disetel "Who has access: Anyone", atau URL /exec salah.');
+      }
+      throw new Error('Balasan server tidak dapat dibaca. Coba muat ulang halaman.');
     }
-    throw new Error('Balasan server tidak dapat dibaca. Coba muat ulang halaman.');
   }
+}
+
+/** Simpan durasi permintaan (maks. 30 terakhir) untuk panel diagnostik. */
+function catatKecepatan(action, mulai) {
+  const selesai = (window.performance && performance.now) ? performance.now() : Date.now();
+  STAT_API.push({ action: action, ms: Math.round(selesai - mulai), waktu: new Date() });
+  if (STAT_API.length > 30) STAT_API.shift();
 }
 
 /** Rupiah fleksibel — desimal hanya tampil bila memang ada. */
@@ -338,12 +367,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         + 'URL /exec hasil deploy Apps Script, lalu unggah ulang ke GitHub.');
   }
 
-  muatInfoPublik(); // kop cafe di halaman login, sekaligus uji koneksi awal
-
   const token = lsGet(LS.TOKEN, null);
-  if (!token) return tampilkanLogin();
+  if (!token) {
+    muatInfoPublik(); // kop cafe di halaman login, sekaligus "membangunkan" server
+    return tampilkanLogin();
+  }
 
   APP.token = token;
+
+  // ── Tampil seketika dari data terakhir, lalu segarkan di belakang layar ──
+  // Pengguna langsung bisa bekerja tanpa menunggu server; data diperbarui
+  // begitu balasan datang (biasanya 1–3 detik kemudian).
+  const tersimpan = bacaBootTersimpan(token);
+  if (tersimpan) {
+    terapkanBootstrap(tersimpan, false);
+    masukAplikasi();
+    segarkanBootstrapLatar();
+    return;
+  }
+
   $('#bootText').textContent = 'Memuat data cafe…';
   muatBootstrap()
     .then(() => masukAplikasi())
@@ -353,6 +395,32 @@ document.addEventListener('DOMContentLoaded', () => {
       tampilkanLogin(err && err.message !== 'SESSION_EXPIRED' ? err.message : '');
     });
 });
+
+/** Data awal terakhir yang tersimpan di perangkat — hanya untuk token yang sama. */
+function bacaBootTersimpan(token) {
+  try {
+    const x = JSON.parse(lsGet(LS.BOOT, 'null'));
+    if (x && x.token === token && x.data && x.data.user) return x.data;
+  } catch (e) {}
+  return null;
+}
+
+/** Segarkan data awal tanpa menghalangi pengguna. */
+function segarkanBootstrapLatar() {
+  apiCall('bootstrap').then(res => {
+    handleRes(res); // sesi kedaluwarsa -> otomatis kembali ke login
+    terapkanBootstrap(res.data, true);
+    terapkanIdentitas();
+    if (APP.navAktif === 'kasir') renderKasir();
+    if (APP.navAktif === 'stok' && typeof renderBahan === 'function') renderBahan();
+    if (APP.navAktif === 'menu' && typeof renderMenuAdmin === 'function') renderMenuAdmin();
+    tandaiSinkron();
+  }).catch(err => {
+    if (err && err.message !== 'SESSION_EXPIRED') {
+      toast('Koneksi lambat', 'Menampilkan data terakhir. ' + err.message, 'warning');
+    }
+  });
+}
 
 /**
  * Ambil identitas cafe (nama, tagline, logo) tanpa perlu login.
@@ -401,6 +469,7 @@ function tampilkanLogin(pesan) {
 function paksaLogout(pesan) {
   APP.token = null; APP.user = null;
   lsDel(LS.TOKEN);
+  lsDel(LS.BOOT); // data cafe tidak ditinggalkan di perangkat setelah keluar
   $('#appShell').classList.add('d-none');
   tampilkanLogin(pesan || '');
 }
@@ -408,13 +477,27 @@ function paksaLogout(pesan) {
 async function muatBootstrap() {
   const res = await apiCall('bootstrap');
   const data = handleRes(res);
+  terapkanBootstrap(data, true);
+  return data;
+}
+
+/**
+ * Pasang data awal ke state aplikasi.
+ * @param {object}  data    isi bootstrap dari server (atau dari penyimpanan lokal)
+ * @param {boolean} simpan  simpan ke perangkat untuk tampilan seketika berikutnya
+ */
+function terapkanBootstrap(data, simpan) {
   APP.user     = data.user;
   APP.config   = data.config || {};
   APP.menu     = data.menu || [];
   APP.bahan    = data.bahan || [];
   APP.resep    = data.resep || [];
   APP.kategori = data.kategori || [];
-  return data;
+  if (data.ringkasan) APP.ringkasan = data.ringkasan;
+
+  if (simpan && APP.token) {
+    lsSet(LS.BOOT, JSON.stringify({ token: APP.token, data: data, disimpan: Date.now() }));
+  }
 }
 
 function masukAplikasi() {
@@ -426,7 +509,9 @@ function masukAplikasi() {
   bangunNavigasi();
   pulihkanKeranjang();
   renderKasir();
-  perbaruiRingkasanShift();
+  // Ringkasan shift sudah ikut di data awal — tidak perlu permintaan terpisah
+  if (APP.ringkasan) tampilkanRingkasan(APP.ringkasan);
+  else perbaruiRingkasanShift();
   tandaiSinkron();
 
   // Halaman awal sesuai peran
@@ -472,7 +557,10 @@ function pasangLoginForm() {
       lsSet(LS.TOKEN, APP.token);
       $('#loginPass').value = '';
 
-      await muatBootstrap();
+      // Backend v2.1 mengirim data awal bersama balasan login (1 perjalanan, bukan 3).
+      // Bila backend masih versi lama, ambil terpisah seperti sebelumnya.
+      if (res.data.bootstrap) terapkanBootstrap(res.data.bootstrap, true);
+      else await muatBootstrap();
       masukAplikasi();
       toast('Selamat datang, ' + res.data.user.nama.split(' ')[0], 'Anda masuk sebagai ' + res.data.user.role + '.', 'success');
     } catch (err) {
