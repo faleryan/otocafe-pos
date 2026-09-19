@@ -1313,3 +1313,22 @@ input[type="date"].field-input::-webkit-calendar-picker-indicator,
   }
   @page { size: 80mm auto; margin: 0; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   PRINTER BLUETOOTH (v2.2)
+   ══════════════════════════════════════════════════════════ */
+.printer-status {
+  display: flex; gap: .6rem; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: .75rem .85rem; margin-bottom: 1rem;
+  font-size: 12.5px; line-height: 18px; color: var(--text-2);
+}
+.printer-status > i { font-size: 16px; line-height: 18px; flex: 0 0 auto; }
+.printer-status b { color: var(--text); }
+.btn-ember.mb-2, .btn-ghost.mb-2 { margin-bottom: .5rem; }
+@media (max-width: 767.98px) {
+  .struk-actions { justify-content: stretch; }
+  .struk-actions > button { flex: 1 1 calc(50% - .5rem); }
+}
+/* tombol kecil di panel printer boleh terbungkus agar tidak keluar tepi di HP */
+#panelPrinter .btn-sm-ember { white-space: normal; text-align: center; line-height: 17px; }

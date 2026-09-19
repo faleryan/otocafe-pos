@@ -221,7 +221,10 @@ function pasangEventGlobal() {
   });
 
   // Struk
-  $('#btnStrukPrint').onclick = () => window.print();
+  // Cetak langsung ke printer Bluetooth bila sudah diatur; bila belum, dialog cetak biasa
+  $('#btnStrukPrint').onclick  = () => cetakStruk(APP.strukTerakhir);
+  $('#btnStrukDialog').onclick = () => window.print();
+  pasangPanelPrinter();
   $('#btnStrukWa').onclick = () => {
     if (!APP.strukTerakhir) return;
     const teks = encodeURIComponent(strukKeTeks(APP.strukTerakhir));

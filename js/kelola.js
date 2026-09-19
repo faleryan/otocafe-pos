@@ -613,6 +613,8 @@ function isiFormPengaturan() {
   const adminOnly = APP.user.role === 'admin';
 
   // Sembunyikan panel yang bukan hak akses peran ini
+  renderPanelPrinter();   // panel printer tampil untuk semua peran
+
   const panels = $$('#section-pengaturan .panel');
   if (panels[0]) panels[0].style.display = adminOnly ? '' : 'none';
   if (panels[1]) panels[1].style.display = adminOnly ? '' : 'none';

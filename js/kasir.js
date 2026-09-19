@@ -415,6 +415,10 @@ async function prosesBayar() {
     kosongkanKeranjang(true);
     tutupSheet();
     tampilkanStruk(struk);
+
+    // Cetak otomatis ke printer Bluetooth bila diaktifkan di Atur → Printer Struk.
+    // Tidak perlu klik lagi: izin printer sudah diberikan sebelumnya.
+    if (bacaSetelanPrinter().otomatis && printerSiap()) cetakStruk(struk, { otomatis: true });
     toast(struk.hutang ? 'Tercatat sebagai hutang' : 'Transaksi berhasil', res.message,
           struk.hutang ? 'warning' : 'success');
     if (struk.hutang) APP.cacheHutang = null;
