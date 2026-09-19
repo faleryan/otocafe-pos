@@ -1,0 +1,19 @@
+# Berkas sistem
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Jangan pernah unggah berkas backend ke repo frontend —
+# Kode.gs hanya untuk ditempel ke editor Google Apps Script
+*.gs
+appsscript.json
+
+# Catatan pribadi / kredensial
+*.local
+.env
+token.txt

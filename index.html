@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1B0D12">
+  <meta name="description" content="Aplikasi kasir & manajemen Otocafe — penjualan, stok, HPP, hutang pelanggan, dan laporan.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23E0533C'/%3E%3Ctext y='72' x='50' text-anchor='middle' font-size='58'%3E%E2%98%95%3C/text%3E%3C/svg%3E">
+  <title>Otocafe App</title>
+
+  <!-- ── Font: Plus Jakarta Sans (sesuai design system "Velvet Roast & Ember") ── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- ── Bootstrap 5 (grid, modal, toast, offcanvas) ── -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <!-- Gaya aplikasi -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOADING OVERLAY — tampil saat boot & saat proses berat
+     ══════════════════════════════════════════════════════════ -->
+<div id="bootOverlay" class="boot-overlay">
+  <div class="boot-logo"><i class="bi bi-cup-hot-fill"></i></div>
+  <div class="boot-name">Otocafe</div>
+  <div class="boot-bar"><span></span></div>
+  <p class="boot-text" id="bootText">Menyiapkan aplikasi…</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     HALAMAN LOGIN (di luar shell aplikasi)
+     ══════════════════════════════════════════════════════════ -->
+<div id="loginScreen" class="login-screen d-none">
+  <div class="login-glow"></div>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo"><i class="bi bi-cup-hot-fill"></i></div>
+      <div>
+        <h1 class="login-title">Otocafe</h1>
+        <p class="login-sub">Point of Sale &amp; Manajemen Cafe</p>
+      </div>
+    </div>
+
+    <form id="loginForm" autocomplete="off" novalidate>
+      <div class="field-group">
+        <label class="field-label" for="loginUser">Username</label>
+        <div class="field-wrap">
+          <i class="bi bi-person"></i>
+          <input type="text" id="loginUser" class="field-input" placeholder="mis. kasir" required autocapitalize="none">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="loginPass">Password</label>
+        <div class="field-wrap">
+          <i class="bi bi-lock"></i>
+          <input type="password" id="loginPass" class="field-input" placeholder="••••••••" required>
+          <button type="button" class="field-action" id="togglePass" aria-label="Tampilkan password">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="loginError" class="login-error d-none"></div>
+
+      <button type="submit" class="btn-ember w-100" id="btnLogin">
+        <i class="bi bi-box-arrow-in-right"></i> <span>Masuk</span>
+      </button>
+    </form>
+
+    <div class="login-hint">
+      <i class="bi bi-info-circle"></i>
+      Akun awal: <b>admin / admin123</b> · <b>owner / owner123</b> · <b>kasir / kasir123</b>
+      <span class="d-block mt-1 text-muted-2">Segera ganti password setelah login pertama.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SHELL APLIKASI
+     ══════════════════════════════════════════════════════════ -->
+<div id="appShell" class="app-shell d-none">
+
+  <!-- ── RAIL NAVIGASI KIRI (desktop / tablet) ── -->
+  <aside class="rail" id="rail">
+    <div class="rail-logo" title="Otocafe">
+      <img id="railLogoImg" alt="" class="d-none">
+      <i class="bi bi-cup-hot-fill" id="railLogoIcon"></i>
+    </div>
+
+    <nav class="rail-nav" id="railNav">
+      <button class="rail-btn" data-nav="kasir"       title="Kasir"><i class="bi bi-calculator"></i><span>Kasir</span></button>
+      <button class="rail-btn" data-nav="riwayat"     title="Riwayat"><i class="bi bi-receipt"></i><span>Riwayat</span></button>
+      <button class="rail-btn" data-nav="menu"        title="Menu"><i class="bi bi-cup-straw"></i><span>Menu</span></button>
+      <button class="rail-btn" data-nav="stok"        title="Stok"><i class="bi bi-box-seam"></i><span>Stok</span></button>
+      <button class="rail-btn" data-nav="hutang"      title="Daftar Hutang"><i class="bi bi-person-lines-fill"></i><span>Hutang</span></button>
+      <button class="rail-btn" data-nav="pengeluaran" title="Pengeluaran"><i class="bi bi-wallet2"></i><span>Biaya</span></button>
+      <button class="rail-btn" data-nav="laporan"     title="Laporan"><i class="bi bi-graph-up-arrow"></i><span>Laporan</span></button>
+      <button class="rail-btn" data-nav="pengguna"    title="Pengguna"><i class="bi bi-people"></i><span>Akun</span></button>
+      <button class="rail-btn" data-nav="pengaturan"  title="Pengaturan"><i class="bi bi-sliders"></i><span>Atur</span></button>
+    </nav>
+
+    <div class="rail-foot">
+      <button class="rail-icon" id="btnTheme" title="Ganti mode terang/gelap"><i class="bi bi-moon-stars"></i></button>
+      <button class="rail-icon" id="btnLogout" title="Keluar"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
+  </aside>
+
+  <!-- ── AREA UTAMA ── -->
+  <div class="stage">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand-block">
+          <h2 class="brand-name" id="topCafeName">Otocafe</h2>
+          <p class="brand-sub" id="topPageLabel">Terminal Kasir</p>
+        </div>
+        <span class="chip chip-role" id="topRoleChip">Kasir</span>
+      </div>
+
+      <div class="topbar-search" id="topbarSearchWrap">
+        <i class="bi bi-search"></i>
+        <input type="text" id="globalSearch" class="topbar-input" placeholder="Cari menu minuman, makanan, atau kode…">
+        <kbd class="search-kbd">F2</kbd>
+      </div>
+
+      <div class="topbar-right">
+        <div class="shift-pill" id="shiftPill">
+          <span class="dot-live"></span>
+          <div>
+            <div class="shift-main" id="shiftOmzet">Rp 0</div>
+            <div class="shift-sub" id="shiftTrx">0 struk hari ini</div>
+          </div>
+        </div>
+        <button class="icon-btn d-md-none" id="btnThemeMobile" title="Mode gelap/terang"><i class="bi bi-moon-stars"></i></button>
+        <div class="user-chip" id="userChip">
+          <div class="avatar" id="userAvatar">R</div>
+          <div class="d-none d-lg-block">
+            <div class="user-name" id="userName">—</div>
+            <div class="user-role" id="userRole">—</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Status bar koneksi -->
+    <div class="statusbar">
+      <span class="status-item"><span class="dot-ok"></span> Google Sheets DB <b id="dbStatus">Terhubung</b></span>
+      <span class="status-item d-none d-sm-inline-flex"><i class="bi bi-arrow-repeat"></i> Sinkron: <b id="lastSync">baru saja</b></span>
+      <span class="status-item ms-auto d-none d-md-inline-flex"><i class="bi bi-clock"></i> <b id="clockNow">--:--</b></span>
+    </div>
+
+    <!-- ════════ SEMUA SECTION SPA ════════ -->
+    <main class="content" id="contentArea">
+
+      <!-- ─────────── SECTION: KASIR ─────────── -->
+      <section id="section-kasir" class="section">
+        <div class="pos-layout">
+
+          <!-- Panggung menu -->
+          <div class="pos-stage">
+            <div id="heroBanner" class="hero-card"></div>
+
+            <div class="section-head">
+              <h3 class="section-title">Kategori Menu</h3>
+              <span class="section-meta" id="menuMeta">—</span>
+            </div>
+
+            <div class="chip-rail" id="kategoriRail"></div>
+
+            <div id="menuGrid" class="menu-grid"></div>
+          </div>
+
+          <!-- Order slip / keranjang -->
+          <aside class="pos-slip" id="posSlip">
+            <div class="slip-head">
+              <div>
+                <span class="slip-label">Nomor Pesanan</span>
+                <div class="slip-order">
+                  <span id="slipNoOrder">#OTO-BARU</span>
+                  <span class="chip chip-type" id="slipTipe">Dine-In</span>
+                </div>
+              </div>
+              <button class="icon-btn" id="btnClearCart" title="Kosongkan keranjang"><i class="bi bi-trash3"></i></button>
+            </div>
+
+            <div class="slip-type-toggle" id="tipeToggle">
+              <button class="type-btn active" data-tipe="Dine-In"><i class="bi bi-shop"></i> Dine-In</button>
+              <button class="type-btn" data-tipe="Take Away"><i class="bi bi-bag"></i> Bungkus</button>
+            </div>
+
+            <div class="slip-meta-row">
+              <div class="mini-field">
+                <label>Pelanggan</label>
+                <input type="text" id="inpPelanggan" placeholder="Opsional" maxlength="40">
+              </div>
+              <div class="mini-field">
+                <label>Nomor Meja</label>
+                <input type="text" id="inpMeja" placeholder="Meja 01" maxlength="10">
+              </div>
+            </div>
+
+            <div class="slip-items" id="slipItems"></div>
+
+            <div class="slip-summary" id="slipSummary"></div>
+
+            <div class="slip-pay">
+              <span class="slip-label">Metode Pembayaran</span>
+              <div class="pay-grid" id="payGrid">
+                <button class="pay-btn active" data-pay="QRIS"><i class="bi bi-qr-code"></i><span>QRIS</span></button>
+                <button class="pay-btn" data-pay="Tunai"><i class="bi bi-cash-coin"></i><span>Tunai</span></button>
+                <button class="pay-btn" data-pay="Debit/EDC"><i class="bi bi-credit-card"></i><span>Debit/EDC</span></button>
+                <button class="pay-btn" data-pay="Transfer"><i class="bi bi-bank"></i><span>Transfer</span></button>
+                <button class="pay-btn pay-hutang" data-pay="Hutang"><i class="bi bi-hourglass-split"></i><span>Hutang</span></button>
+              </div>
+            </div>
+
+            <!-- Field tambahan khusus pembayaran Hutang -->
+            <div class="hutang-fields d-none" id="hutangFields">
+              <div class="hutang-note">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>Stok bahan tetap berkurang. Nilai transaksi masuk <b>Daftar Hutang</b>
+                  dan baru dihitung sebagai pendapatan setelah dilunasi.</span>
+              </div>
+              <div class="slip-meta-row">
+                <div class="mini-field">
+                  <label>Kontak / WhatsApp</label>
+                  <input type="text" id="inpKontak" placeholder="Opsional" maxlength="25">
+                </div>
+                <div class="mini-field">
+                  <label>Jatuh Tempo</label>
+                  <input type="date" id="inpJatuhTempo">
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-ember w-100 btn-checkout" id="btnBayar" disabled>
+              <i class="bi bi-printer"></i> <span>Simpan &amp; Cetak Struk</span>
+            </button>
+            <p class="slip-note"><i class="bi bi-check2-square"></i> HPP resep &amp; stok bahan baku berkurang otomatis</p>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: RIWAYAT TRANSAKSI ─────────── -->
+      <section id="section-riwayat" class="section">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="section-title">Riwayat Transaksi</h3>
+              <p class="section-meta" id="riwayatScope">—</p>
+            </div>
+            <div class="panel-tools" id="riwayatTools"></div>
+          </div>
+          <div id="riwayatSummary" class="kpi-row"></div>
+          <div id="riwayatList" class="data-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: KELOLA MENU ─────────── -->
+      <section id="section-menu" class="section">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="section-title">Kelola Menu &amp; Resep</h3>
+              <p class="section-meta">HPP dihitung otomatis dari komposisi bahan baku</p>
+            </div>
+            <div class="panel-tools">
+              <div class="search-inline">
+                <i class="bi bi-search"></i>
+                <input type="text" id="searchMenuAdmin" placeholder="Cari menu…">
+              </div>
+              <button class="btn-ember btn-sm-ember" id="btnTambahMenu"><i class="bi bi-plus-lg"></i> Menu Baru</button>
+            </div>
+          </div>
+          <div id="menuAdminList" class="data-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: STOK & BAHAN BAKU ─────────── -->
+      <section id="section-stok" class="section">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="section-title">Stok &amp; Bahan Baku</h3>
+              <p class="section-meta">Stok berkurang otomatis setiap transaksi penjualan</p>
+            </div>
+            <div class="panel-tools">
+              <div class="search-inline">
+                <i class="bi bi-search"></i>
+                <input type="text" id="searchBahan" placeholder="Cari bahan…">
+              </div>
+              <button class="btn-ghost btn-sm-ember" id="btnRiwayatStok"><i class="bi bi-clock-history"></i> Mutasi</button>
+              <button class="btn-ember btn-sm-ember" id="btnTambahBahan"><i class="bi bi-plus-lg"></i> Bahan Baru</button>
+            </div>
+          </div>
+          <div id="stokAlert"></div>
+          <div id="bahanList" class="data-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: PENGELUARAN ─────────── -->
+      <section id="section-pengeluaran" class="section">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="section-title">Pengeluaran Operasional</h3>
+              <p class="section-meta">Otomatis masuk ke perhitungan laba rugi</p>
+            </div>
+            <div class="panel-tools">
+              <input type="date" id="keluarDari" class="date-input">
+              <span class="text-muted-2">s/d</span>
+              <input type="date" id="keluarSampai" class="date-input">
+              <button class="btn-ember btn-sm-ember" id="btnTambahKeluar"><i class="bi bi-plus-lg"></i> Catat</button>
+            </div>
+          </div>
+          <div id="keluarSummary" class="kpi-row"></div>
+          <div id="keluarList" class="data-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: DAFTAR HUTANG ─────────── -->
+      <section id="section-hutang" class="section">
+        <div id="hutangSummary" class="kpi-row"></div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="section-title">Daftar Hutang Pelanggan</h3>
+              <p class="section-meta">Barang sudah keluar &amp; stok terpotong — pendapatan diakui saat pelunasan</p>
+            </div>
+            <div class="panel-tools">
+              <div class="chip-rail chip-rail-tight" id="hutangFilterRail">
+                <button class="chip chip-filter active" data-status="Belum Lunas">Belum Lunas</button>
+                <button class="chip chip-filter" data-status="Lunas">Lunas</button>
+                <button class="chip chip-filter" data-status="Semua">Semua</button>
+              </div>
+              <div class="search-inline">
+                <i class="bi bi-search"></i>
+                <input type="text" id="searchHutang" placeholder="Cari nama / no. struk…">
+              </div>
+              <button class="btn-ghost btn-sm-ember" id="btnExportHutang"><i class="bi bi-download"></i> CSV</button>
+            </div>
+          </div>
+          <div id="hutangList" class="data-wrap"></div>
+        </div>
+
+        <div class="panel" id="panelTopNunggak">
+          <h4 class="panel-title"><i class="bi bi-person-exclamation"></i> Pelanggan dengan Sisa Hutang Terbesar</h4>
+          <div id="topNunggakList" class="data-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: LAPORAN & DASHBOARD ─────────── -->
+      <section id="section-laporan" class="section">
+        <div class="panel-head panel-head-flat">
+          <div>
+            <h3 class="section-title">Dashboard &amp; Laporan</h3>
+            <p class="section-meta" id="laporanPeriode">—</p>
+          </div>
+          <div class="periode-tools">
+            <div class="chip-rail chip-rail-tight" id="periodeRail">
+              <button class="chip chip-filter active" data-periode="7hari">7 Hari</button>
+              <button class="chip chip-filter" data-periode="30hari">30 Hari</button>
+              <button class="chip chip-filter" data-periode="bulanIni">Bulan Ini</button>
+            </div>
+            <label class="bulan-picker" for="pilihBulan">
+              <i class="bi bi-calendar3"></i>
+              <select id="pilihBulan" aria-label="Pilih bulan">
+                <option value="">Riwayat bulan…</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- Ringkasan uang masuk & keluar dalam bentuk persamaan -->
+        <div id="kpiHero"></div>
+
+        <div id="kpiRow" class="kpi-row"></div>
+
+        <div class="chart-grid">
+          <div class="panel chart-panel">
+            <div class="panel-head panel-head-flat">
+              <h4 class="panel-title">Tren Penjualan &amp; Laba</h4>
+              <span class="legend-inline">
+                <span><i class="lg-dot lg-primary"></i>Omzet</span>
+                <span><i class="lg-dash"></i>Laba Kotor</span>
+              </span>
+            </div>
+            <div class="chart-box"><canvas id="chartTren"></canvas></div>
+          </div>
+
+          <div class="panel insight-panel">
+            <h4 class="panel-title"><i class="bi bi-stars"></i> Analisis Otomatis</h4>
+            <ul class="insight-list" id="insightList"></ul>
+          </div>
+        </div>
+
+        <div class="chart-grid chart-grid-3">
+          <div class="panel chart-panel">
+            <h4 class="panel-title">Menu Terlaris</h4>
+            <div class="chart-box chart-box-sm"><canvas id="chartTerlaris"></canvas></div>
+          </div>
+          <div class="panel chart-panel">
+            <h4 class="panel-title">Metode Pembayaran</h4>
+            <div class="chart-box chart-box-sm"><canvas id="chartMetode"></canvas></div>
+          </div>
+          <div class="panel chart-panel">
+            <h4 class="panel-title">Pengeluaran per Kategori</h4>
+            <div class="chart-box chart-box-sm"><canvas id="chartKeluar"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head panel-head-flat">
+            <h4 class="panel-title">Ringkasan Laba Rugi</h4>
+            <button class="btn-ghost btn-sm-ember" id="btnUnduhLaporan"><i class="bi bi-download"></i> Unduh CSV</button>
+          </div>
+          <div id="labaRugiTable" class="data-wrap"></div>
+        </div>
+
+        <div class="panel">
+          <h4 class="panel-title">Peringatan Stok</h4>
+          <div id="stokKritisList" class="data-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: PENGGUNA ─────────── -->
+      <section id="section-pengguna" class="section">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3 class="section-title">Pengguna &amp; Hak Akses</h3>
+              <p class="section-meta">Admin · Owner · Kasir</p>
+            </div>
+            <button class="btn-ember btn-sm-ember" id="btnTambahUser"><i class="bi bi-person-plus"></i> Pengguna Baru</button>
+          </div>
+          <div id="penggunaList" class="data-wrap"></div>
+          <div class="rbac-note">
+            <h5><i class="bi bi-shield-check"></i> Matriks Hak Akses</h5>
+            <div id="rbacTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: PENGATURAN ─────────── -->
+      <section id="section-pengaturan" class="section">
+        <div class="settings-grid">
+          <div class="panel">
+            <h4 class="panel-title">Identitas Cafe</h4>
+            <form id="formPengaturan" class="form-stack" novalidate>
+              <div class="field-group">
+                <label class="field-label">Nama Cafe</label>
+                <div class="field-wrap"><i class="bi bi-shop"></i>
+                  <input type="text" class="field-input" id="setNamaCafe" required maxlength="50"></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Tagline</label>
+                <div class="field-wrap"><i class="bi bi-chat-quote"></i>
+                  <input type="text" class="field-input" id="setTagline" maxlength="60"></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Alamat</label>
+                <div class="field-wrap"><i class="bi bi-geo-alt"></i>
+                  <input type="text" class="field-input" id="setAlamat" maxlength="120"></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Telepon / WhatsApp</label>
+                <div class="field-wrap"><i class="bi bi-telephone"></i>
+                  <input type="text" class="field-input" id="setTelepon" maxlength="25"></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Logo Cafe</label>
+                <input type="hidden" id="setLogo">
+                <div class="upload-row">
+                  <div class="upload-preview" id="logoPreview"><i class="bi bi-image"></i></div>
+                  <div class="flex-grow-1">
+                    <input type="file" id="logoFile" accept="image/*" class="d-none">
+                    <div class="d-flex gap-2 flex-wrap">
+                      <button type="button" class="btn-ghost btn-sm-ember" id="btnPilihLogo">
+                        <i class="bi bi-upload"></i> Unggah Logo</button>
+                      <button type="button" class="btn-ghost btn-sm-ember" id="btnHapusLogo">
+                        <i class="bi bi-x-circle"></i> Hapus</button>
+                    </div>
+                    <small class="field-hint">JPG / PNG / WebP, maksimal 5 MB. Gambar disimpan otomatis
+                      ke folder <b>Foto_Menu</b> di Google Drive. Kosongkan untuk memakai ikon bawaan.</small>
+                  </div>
+                </div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Pajak / Service (%)</label>
+                <div class="field-wrap"><i class="bi bi-percent"></i>
+                  <input type="number" class="field-input" id="setPajak" min="0" step="any"></div>
+                <small class="field-hint">Isi 0 bila tidak memungut pajak.</small>
+              </div>
+              <button type="submit" class="btn-ember w-100"><i class="bi bi-save"></i> Simpan Pengaturan</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h4 class="panel-title">Tampilan Struk</h4>
+            <form id="formStruk" class="form-stack" novalidate>
+              <div class="field-group">
+                <label class="field-label">Header Struk</label>
+                <div class="field-wrap"><i class="bi bi-type"></i>
+                  <input type="text" class="field-input" id="setStrukHeader" maxlength="30"></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Footer / Ucapan Terima Kasih</label>
+                <div class="field-wrap"><i class="bi bi-emoji-smile"></i>
+                  <input type="text" class="field-input" id="setStrukFooter" maxlength="80"></div>
+              </div>
+              <label class="switch-row">
+                <input type="checkbox" id="setLogoStruk">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>Tampilkan logo pada struk</span>
+              </label>
+              <button type="submit" class="btn-ember w-100"><i class="bi bi-save"></i> Simpan Format Struk</button>
+            </form>
+
+            <div class="divider"></div>
+            <h4 class="panel-title">Pratinjau Struk</h4>
+            <button class="btn-ghost w-100" id="btnPreviewStruk"><i class="bi bi-eye"></i> Lihat Contoh Struk</button>
+          </div>
+
+          <div class="panel">
+            <h4 class="panel-title">Keamanan Akun</h4>
+            <form id="formPassword" class="form-stack" novalidate>
+              <div class="field-group">
+                <label class="field-label">Password Lama</label>
+                <div class="field-wrap"><i class="bi bi-lock"></i>
+                  <input type="password" class="field-input" id="passLama" required></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Password Baru</label>
+                <div class="field-wrap"><i class="bi bi-lock-fill"></i>
+                  <input type="password" class="field-input" id="passBaru" required minlength="6"></div>
+                <small class="field-hint">Minimal 6 karakter.</small>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Ulangi Password Baru</label>
+                <div class="field-wrap"><i class="bi bi-lock-fill"></i>
+                  <input type="password" class="field-input" id="passUlang" required minlength="6"></div>
+              </div>
+              <button type="submit" class="btn-ember w-100"><i class="bi bi-shield-lock"></i> Ubah Password</button>
+            </form>
+
+            <div class="divider"></div>
+            <div class="info-block" id="infoPenyimpanan"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── BOTTOM NAV (mobile) ── -->
+    <nav class="bottom-nav" id="bottomNav"></nav>
+  </div>
+
+  <!-- ── Tombol keranjang mengambang (mobile) ── -->
+  <button class="cart-fab d-none" id="cartFab">
+    <div class="fab-left">
+      <i class="bi bi-bag-fill"></i>
+      <div>
+        <div class="fab-count" id="fabCount">0 Item</div>
+        <div class="fab-meja" id="fabMeja">Dine-In</div>
+      </div>
+    </div>
+    <div class="fab-right">
+      <div class="fab-label">Total Tagihan</div>
+      <div class="fab-total" id="fabTotal">Rp 0</div>
+    </div>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: FORM MENU
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalMenu" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalMenuTitle">Menu Baru</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="formMenu" novalidate>
+          <input type="hidden" id="menuId">
+          <div class="row g-3">
+            <div class="col-md-7">
+              <div class="field-group">
+                <label class="field-label">Nama Menu *</label>
+                <div class="field-wrap"><i class="bi bi-cup-hot"></i>
+                  <input type="text" class="field-input" id="menuNama" required maxlength="60"></div>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <div class="field-group">
+                <label class="field-label">Kategori *</label>
+                <div class="field-wrap"><i class="bi bi-tags"></i>
+                  <input type="text" class="field-input" id="menuKategori" list="listKategori" required maxlength="30">
+                  <datalist id="listKategori"></datalist></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="field-group">
+                <label class="field-label">Harga Jual (Rp) *</label>
+                <div class="field-wrap"><i class="bi bi-cash"></i>
+                  <input type="number" class="field-input" id="menuHarga" min="1" step="any" required></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="field-group">
+                <label class="field-label">Badge / Label</label>
+                <div class="field-wrap"><i class="bi bi-award"></i>
+                  <input type="text" class="field-input" id="menuBadge" placeholder="mis. Terlaris" maxlength="20"></div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="field-group">
+                <label class="field-label">Foto Menu</label>
+                <div class="upload-row">
+                  <div class="upload-preview" id="menuFotoPreview"><i class="bi bi-image"></i></div>
+                  <div class="flex-grow-1">
+                    <div class="field-wrap"><i class="bi bi-link-45deg"></i>
+                      <input type="url" class="field-input" id="menuFoto" placeholder="URL gambar atau unggah file"></div>
+                    <div class="d-flex gap-2 mt-2">
+                      <input type="file" id="menuFotoFile" accept="image/*" class="d-none">
+                      <button type="button" class="btn-ghost btn-sm-ember" id="btnPilihFoto"><i class="bi bi-upload"></i> Unggah</button>
+                      <button type="button" class="btn-ghost btn-sm-ember" id="btnHapusFoto"><i class="bi bi-x-circle"></i> Hapus</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="switch-row">
+                <input type="checkbox" id="menuAktif" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>Menu aktif &amp; bisa dijual</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="panel-title mb-0">Resep / Komposisi Bahan</h6>
+            <button type="button" class="btn-ghost btn-sm-ember" id="btnTambahResep"><i class="bi bi-plus-lg"></i> Tambah Bahan</button>
+          </div>
+          <div id="resepRows" class="resep-rows"></div>
+          <div class="hpp-preview" id="hppPreview"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-ember" id="btnSimpanMenu"><i class="bi bi-save"></i> Simpan Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: FORM BAHAN BAKU
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalBahan" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalBahanTitle">Bahan Baku Baru</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="formBahan" novalidate>
+          <input type="hidden" id="bahanId">
+          <div class="field-group">
+            <label class="field-label">Nama Bahan *</label>
+            <div class="field-wrap"><i class="bi bi-box"></i>
+              <input type="text" class="field-input" id="bahanNama" required maxlength="60"></div>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="field-group">
+                <label class="field-label">Satuan *</label>
+                <div class="field-wrap"><i class="bi bi-rulers"></i>
+                  <input type="text" class="field-input" id="bahanSatuan" list="listSatuan" placeholder="gram / ml / pcs" required maxlength="12">
+                  <datalist id="listSatuan">
+                    <option value="gram"><option value="ml"><option value="pcs"><option value="liter"><option value="kg"><option value="botol"><option value="pack">
+                  </datalist></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="field-group">
+                <label class="field-label">Harga Beli / Satuan (Rp) *</label>
+                <div class="field-wrap"><i class="bi bi-cash"></i>
+                  <input type="number" class="field-input" id="bahanHarga" min="0" step="any" required></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="field-group">
+                <label class="field-label">Stok Saat Ini *</label>
+                <div class="field-wrap"><i class="bi bi-boxes"></i>
+                  <input type="number" class="field-input" id="bahanStok" min="0" step="any" required></div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="field-group">
+                <label class="field-label">Stok Minimum *</label>
+                <div class="field-wrap"><i class="bi bi-exclamation-triangle"></i>
+                  <input type="number" class="field-input" id="bahanStokMin" min="0" step="any" required></div>
+              </div>
+            </div>
+          </div>
+          <small class="field-hint">Harga beli per satuan terkecil menentukan akurasi HPP. Contoh: 1 kg biji kopi Rp 180.000 → satuan <b>gram</b>, harga <b>180</b>.</small>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-ember" id="btnSimpanBahan"><i class="bi bi-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: MUTASI STOK (pembelian / penyesuaian)
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalMutasi" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title">Penyesuaian Stok</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="formMutasi" novalidate>
+          <input type="hidden" id="mutasiIdBahan">
+          <div class="mutasi-info" id="mutasiInfo"></div>
+          <div class="slip-type-toggle mb-3" id="mutasiTipeToggle">
+            <button type="button" class="type-btn active" data-tipe="Masuk"><i class="bi bi-box-arrow-in-down"></i> Masuk</button>
+            <button type="button" class="type-btn" data-tipe="Keluar"><i class="bi bi-box-arrow-up"></i> Keluar</button>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Jumlah *</label>
+            <div class="field-wrap"><i class="bi bi-123"></i>
+              <input type="number" class="field-input" id="mutasiJumlah" min="1" step="any" required>
+              <span class="field-suffix" id="mutasiSatuan">gram</span></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Keterangan</label>
+            <div class="field-wrap"><i class="bi bi-chat-left-text"></i>
+              <input type="text" class="field-input" id="mutasiKet" placeholder="mis. Pembelian supplier" maxlength="80"></div>
+          </div>
+          <label class="switch-row" id="mutasiKeluarWrap">
+            <input type="checkbox" id="mutasiCatatKeluar" checked>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span>Catat sebagai pengeluaran (masuk ke laba rugi)</span>
+          </label>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-ember" id="btnSimpanMutasi"><i class="bi bi-check2"></i> Proses</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: FORM PENGELUARAN
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalKeluar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalKeluarTitle">Catat Pengeluaran</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="formKeluar" novalidate>
+          <input type="hidden" id="keluarId">
+          <div class="field-group">
+            <label class="field-label">Tanggal *</label>
+            <div class="field-wrap"><i class="bi bi-calendar3"></i>
+              <input type="date" class="field-input" id="keluarTanggal" required></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Kategori *</label>
+            <div class="field-wrap"><i class="bi bi-tag"></i>
+              <select class="field-input" id="keluarKategori" required>
+                <option value="">— Pilih kategori —</option>
+                <option>Bahan Baku</option>
+                <option>Gaji &amp; Upah</option>
+                <option>Sewa Tempat</option>
+                <option>Listrik &amp; Air</option>
+                <option>Internet</option>
+                <option>Perlengkapan</option>
+                <option>Pemasaran</option>
+                <option>Perawatan Alat</option>
+                <option>Operasional</option>
+                <option>Lainnya</option>
+              </select></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Jumlah (Rp) *</label>
+            <div class="field-wrap"><i class="bi bi-cash-stack"></i>
+              <input type="number" class="field-input" id="keluarJumlah" min="1" step="any" required></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Keterangan</label>
+            <div class="field-wrap"><i class="bi bi-chat-left-text"></i>
+              <input type="text" class="field-input" id="keluarKet" maxlength="100"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-ember" id="btnSimpanKeluar"><i class="bi bi-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: FORM PENGGUNA
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalUser" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalUserTitle">Pengguna Baru</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="formUser" novalidate>
+          <input type="hidden" id="userId">
+          <div class="field-group">
+            <label class="field-label">Nama Lengkap *</label>
+            <div class="field-wrap"><i class="bi bi-person"></i>
+              <input type="text" class="field-input" id="userNama" required maxlength="50"></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Username *</label>
+            <div class="field-wrap"><i class="bi bi-at"></i>
+              <input type="text" class="field-input" id="userUsername" required maxlength="20" autocapitalize="none"></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Peran *</label>
+            <div class="field-wrap"><i class="bi bi-shield"></i>
+              <select class="field-input" id="userRoleSel" required>
+                <option value="kasir">Kasir — input transaksi &amp; cetak struk</option>
+                <option value="admin">Admin — akses penuh operasional</option>
+                <option value="owner">Owner — hanya laporan &amp; dashboard</option>
+              </select></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Password <span id="userPassHint">*</span></label>
+            <div class="field-wrap"><i class="bi bi-key"></i>
+              <input type="password" class="field-input" id="userPassword" minlength="6"></div>
+            <small class="field-hint" id="userPassNote">Minimal 6 karakter.</small>
+          </div>
+          <label class="switch-row">
+            <input type="checkbox" id="userAktif" checked>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span>Akun aktif</span>
+          </label>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-ember" id="btnSimpanUser"><i class="bi bi-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: PELUNASAN HUTANG
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalBayarHutang" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cash-stack"></i> Terima Pelunasan Hutang</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="formBayarHutang" novalidate>
+          <input type="hidden" id="bayarIdHutang">
+          <div class="mutasi-info" id="bayarInfoHutang"></div>
+
+          <div class="field-group">
+            <label class="field-label">Jumlah Dibayar (Rp) *</label>
+            <div class="field-wrap"><i class="bi bi-cash"></i>
+              <input type="number" class="field-input" id="bayarJumlah" min="0" step="any" required></div>
+            <div class="d-flex gap-2 mt-2 flex-wrap" id="bayarCepat"></div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Metode Pelunasan *</label>
+            <div class="pay-grid" id="bayarMetodeGrid">
+              <button type="button" class="pay-btn active" data-pay="Tunai"><i class="bi bi-cash-coin"></i><span>Tunai</span></button>
+              <button type="button" class="pay-btn" data-pay="QRIS"><i class="bi bi-qr-code"></i><span>QRIS</span></button>
+              <button type="button" class="pay-btn" data-pay="Debit/EDC"><i class="bi bi-credit-card"></i><span>Debit/EDC</span></button>
+              <button type="button" class="pay-btn" data-pay="Transfer"><i class="bi bi-bank"></i><span>Transfer</span></button>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Catatan</label>
+            <div class="field-wrap"><i class="bi bi-chat-left-text"></i>
+              <input type="text" class="field-input" id="bayarCatatan" maxlength="80"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-ember" id="btnSimpanBayarHutang"><i class="bi bi-check2-circle"></i> Catat Pembayaran</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: DETAIL & RIWAYAT HUTANG
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalDetailHutang" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-lines-fill"></i> Detail Hutang</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body" id="detailHutangBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn-ghost" id="btnSimpanUbahHutang"><i class="bi bi-save"></i> Simpan Perubahan</button>
+        <button type="button" class="btn-ember" id="btnBayarDariDetail"><i class="bi bi-cash-stack"></i> Terima Pembayaran</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: STRUK (pratinjau siap cetak)
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalStruk" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-receipt-cutoff"></i> Struk Pembayaran</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="strukPaper" class="struk-paper"></div>
+      </div>
+      <div class="modal-footer struk-actions">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Tutup</button>
+        <button type="button" class="btn-ghost" id="btnStrukWa"><i class="bi bi-whatsapp"></i> Kirim WhatsApp</button>
+        <button type="button" class="btn-ember" id="btnStrukPrint"><i class="bi bi-printer"></i> Cetak Struk</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: PRATINJAU GAMBAR
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalPreview" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewTitle">Pratinjau</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body text-center" id="previewBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Tutup</button>
+        <a href="#" id="previewDownload" class="btn-ember" target="_blank" rel="noopener"><i class="bi bi-download"></i> Unduh</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: KONFIRMASI (generik)
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalKonfirmasi" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content oto-modal">
+      <div class="modal-body text-center py-4">
+        <div class="confirm-icon" id="confirmIcon"><i class="bi bi-exclamation-triangle"></i></div>
+        <h5 class="mt-3 mb-2" id="confirmTitle">Konfirmasi</h5>
+        <p class="text-muted-2 mb-0" id="confirmText">Yakin melanjutkan?</p>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn-danger-oto" id="btnConfirmYes">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: RIWAYAT MUTASI STOK
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalRiwayatStok" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content oto-modal">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-clock-history"></i> Riwayat Mutasi Stok</h5>
+        <button type="button" class="btn-close-oto" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body" id="mutasiListBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TOAST NOTIFIKASI
+     ══════════════════════════════════════════════════════════ -->
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ── Libraries ── -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<!-- ══════════════════════════════════════════════════════════
+     SKRIP APLIKASI — urutan pemuatan penting
+     config  : alamat API (WAJIB diisi sebelum deploy)
+     core    : state, utilitas, lapisan fetch, autentikasi
+     kasir   : terminal kasir, keranjang, struk, riwayat
+     hutang  : daftar hutang & pelunasan
+     kelola  : menu, stok, pengeluaran, pengguna, pengaturan
+     laporan : dashboard & grafik
+     app     : navigasi SPA, boot, pemasangan event
+     ══════════════════════════════════════════════════════════ -->
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/kasir.js"></script>
+<script src="js/hutang.js"></script>
+<script src="js/kelola.js"></script>
+<script src="js/laporan.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
