@@ -96,7 +96,7 @@ function renderHutang(payload) {
           '<button class="act-btn" data-detail="' + h.id + '" title="Detail & riwayat"><i class="bi bi-eye"></i></button>' +
           (payload.bolehBayar && h.sisa > 0
             ? '<button class="act-btn" data-bayar="' + h.id + '" title="Terima pembayaran"><i class="bi bi-cash-stack"></i></button>' : '') +
-          (payload.bolehHapus && h.dibayar === 0
+          (bolehHapusHutang(payload) && h.dibayar === 0
             ? '<button class="act-btn act-danger" data-hapush="' + h.id + '" title="Hapus catatan"><i class="bi bi-trash3"></i></button>' : '') +
         '</td>' +
       '</tr>';
@@ -119,6 +119,11 @@ function renderHutang(payload) {
       } catch (err) { if (err.message !== 'SESSION_EXPIRED') toast('Gagal', err.message, 'danger'); }
     }, 'Ya, Hapus');
   });
+}
+
+/** Hapus hutang khusus Admin — dicek dari respons server DAN peran yang sedang login. */
+function bolehHapusHutang(payload) {
+  return !!(payload && payload.bolehHapus && APP.user && APP.user.role === 'admin');
 }
 
 function cariHutangDiCache(id) {
@@ -218,6 +223,9 @@ async function bukaDetailHutang(id) {
         '<input type="text" class="field-input" id="detCatatan" value="' + esc(h.catatan) + '" maxlength="100"></div></div></div>' +
     '</div>' : '') +
 
+    '<h6 class="panel-title">Rincian Menu</h6>' +
+    '<div id="rincianMenuBox"><div class="loading-inline"><div class="spin-ring"></div>Memuat rincian…</div></div>' +
+
     '<h6 class="panel-title">Riwayat Pelunasan</h6>' +
     '<div id="riwayatBayarBox"><div class="loading-inline"><div class="spin-ring"></div>Memuat riwayat…</div></div>';
 
@@ -225,7 +233,11 @@ async function bukaDetailHutang(id) {
 
   try {
     const res = await apiCall('getRiwayatBayarHutang', { idHutang: h.id });
-    const list = handleRes(res);
+    const hasil = handleRes(res);
+    // Backend lama mengirim array riwayat saja, backend baru mengirim objek
+    const list = Array.isArray(hasil) ? hasil : (hasil.riwayat || []);
+    renderRincianMenuHutang(Array.isArray(hasil) ? [] : (hasil.item || []),
+                            Array.isArray(hasil) ? null : hasil.transaksi, h);
     $('#riwayatBayarBox').innerHTML = list.length
       ? '<div class="data-wrap"><table class="data-table"><thead><tr><th>Tanggal</th>' +
         '<th class="td-num">Jumlah</th><th>Metode</th><th>Catatan</th><th>Diterima Oleh</th></tr></thead><tbody>' +
@@ -237,9 +249,49 @@ async function bukaDetailHutang(id) {
       : '<div class="info-block">Belum ada pembayaran untuk hutang ini.</div>';
   } catch (err) {
     if (err.message !== 'SESSION_EXPIRED') {
-      $('#riwayatBayarBox').innerHTML = '<div class="info-block">Gagal memuat riwayat: ' + esc(err.message) + '</div>';
+      const pesan = '<div class="info-block">Gagal memuat: ' + esc(err.message) + '</div>';
+      $('#riwayatBayarBox').innerHTML = pesan;
+      if ($('#rincianMenuBox')) $('#rincianMenuBox').innerHTML = pesan;
     }
   }
+}
+
+/** Daftar menu yang dibeli pada transaksi asal hutang. */
+function renderRincianMenuHutang(item, trx, h) {
+  const box = $('#rincianMenuBox');
+  if (!box) return;
+
+  if (!item.length) {
+    box.innerHTML = '<div class="info-block">Rincian menu tidak tersedia untuk transaksi ini.</div>';
+    return;
+  }
+
+  const meta = trx
+    ? '<div class="menu-cat mb-2">' + esc(trx.tipe || '') +
+        (trx.noMeja ? ' · Meja ' + esc(trx.noMeja) : '') +
+        (trx.kasir ? ' · Kasir ' + esc(trx.kasir) : '') +
+        (trx.catatan ? ' · ' + esc(trx.catatan) : '') + '</div>'
+    : '';
+
+  const baris = item.map(it =>
+    '<tr><td class="td-main">' + esc(it.nama) +
+      (it.catatan ? '<div class="menu-cat">' + esc(it.catatan) + '</div>' : '') + '</td>' +
+    '<td class="td-num">' + angka(it.qty) + '</td>' +
+    '<td class="td-num">' + rupiah(it.harga) + '</td>' +
+    '<td class="td-num td-main">' + rupiah(it.subtotal !== undefined ? it.subtotal : it.harga * it.qty) + '</td></tr>').join('');
+
+  const kaki = trx
+    ? '<tr><td colspan="3" class="td-num">Subtotal</td><td class="td-num">' + rupiah(trx.subtotal) + '</td></tr>' +
+      (trx.diskon > 0 ? '<tr><td colspan="3" class="td-num">Diskon</td><td class="td-num" style="color:var(--secondary)">-' + rupiah(trx.diskon) + '</td></tr>' : '') +
+      (trx.pajak > 0 ? '<tr><td colspan="3" class="td-num">Pajak / Service</td><td class="td-num">' + rupiah(trx.pajak) + '</td></tr>' : '') +
+      '<tr><td colspan="3" class="td-num td-main">Total</td><td class="td-num td-main">' + rupiah(trx.total) + '</td></tr>'
+    : '<tr><td colspan="3" class="td-num td-main">Total</td><td class="td-num td-main">' + rupiah(h.jumlah) + '</td></tr>';
+
+  box.innerHTML = meta +
+    '<div class="data-wrap"><table class="data-table"><thead><tr>' +
+      '<th>Menu</th><th class="td-num">Qty</th><th class="td-num">Harga</th><th class="td-num">Subtotal</th>' +
+    '</tr></thead><tbody>' + baris + '</tbody>' +
+    '<tfoot>' + kaki + '</tfoot></table></div>';
 }
 
 async function simpanUbahHutang(id) {

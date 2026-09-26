@@ -711,7 +711,7 @@ input[type="date"].field-input::-webkit-calendar-picker-indicator,
 .slip-item-note { font-size: 11px; color: var(--text-3); margin-top: .1rem; }
 .slip-item-price { font-size: 13.5px; font-weight: 700; color: var(--secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .slip-item-bot { display: flex; align-items: center; justify-content: space-between; margin-top: .55rem; gap: .5rem; }
-.slip-item-hpp { font-size: 10.5px; color: var(--text-3); display: inline-flex; align-items: center; gap: .25rem; min-width: 0; }
+.slip-item-hpp, .slip-item-qty { font-size: 10.5px; color: var(--text-3); display: inline-flex; align-items: center; gap: .25rem; min-width: 0; }
 .stepper { display: flex; align-items: center; gap: .45rem; }
 .step-btn {
   width: 28px; height: 28px; border-radius: 50%; flex: 0 0 28px;
@@ -1332,3 +1332,11 @@ input[type="date"].field-input::-webkit-calendar-picker-indicator,
 }
 /* tombol kecil di panel printer boleh terbungkus agar tidak keluar tepi di HP */
 #panelPrinter .btn-sm-ember { white-space: normal; text-align: center; line-height: 17px; }
+
+
+/* v2.3 — kaki tabel rincian (mis. rincian menu pada detail hutang) */
+.data-table tfoot td {
+  padding: .6rem .85rem; border-top: 1px solid var(--border);
+  color: var(--text-2); background: var(--surface);
+}
+.data-table tfoot tr:last-child td { color: var(--text); }

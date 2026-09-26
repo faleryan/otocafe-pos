@@ -42,7 +42,7 @@ const LS = { TOKEN: 'oto_token', THEME: 'oto_theme', CART: 'oto_cart', META: 'ot
 
 // Versi frontend. Ditaruh di sini (bukan di config.js) supaya pembaruan tidak
 // pernah mengharuskan Anda menimpa config.js yang berisi alamat API Anda.
-const VERSI_FRONTEND = '2.2.0';
+const VERSI_FRONTEND = '2.3.1';
 
 // Catatan kecepatan permintaan terakhir — ditampilkan di halaman Pengaturan
 const STAT_API = [];
@@ -468,6 +468,9 @@ function tampilkanLogin(pesan) {
 
 function paksaLogout(pesan) {
   APP.token = null; APP.user = null;
+  // Data milik sesi sebelumnya (mis. Admin) tidak boleh terbawa ke akun berikutnya
+  APP.cacheHutang = null; APP.cacheDashboard = null; APP.cacheRiwayat = [];
+  APP.cachePengeluaran = []; APP.cachePengguna = []; APP.strukTerakhir = null;
   lsDel(LS.TOKEN);
   lsDel(LS.BOOT); // data cafe tidak ditinggalkan di perangkat setelah keluar
   $('#appShell').classList.add('d-none');

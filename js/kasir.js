@@ -23,7 +23,7 @@ function deskripsiResep(idMenu) {
   const items = APP.resep.filter(r => r.idMenu === idMenu).slice(0, 3)
     .map(r => (namaBahan[r.idBahan] ? namaBahan[r.idBahan].nama + ' ' + angka(r.jumlah) + namaSatuanSingkat(namaBahan[r.idBahan].satuan) : ''))
     .filter(Boolean);
-  return items.length ? 'Resep: ' + items.join(', ') : 'Belum ada resep — HPP belum terhitung.';
+  return items.length ? 'Resep: ' + items.join(', ') : 'Belum ada resep untuk menu ini.';
 }
 function namaSatuanSingkat(s) {
   const map = { gram: 'g', ml: 'ml', pcs: ' pcs', liter: ' L', kg: ' kg' };
@@ -43,7 +43,6 @@ function renderHero() {
 
   // Menu unggulan = harga tertinggi yang masih tersedia (atau menu pertama)
   const hero = aktif.slice().sort((a, b) => b.harga - a.harga).find(m => m.porsiTersedia > 0) || aktif[0];
-  const margin = hero.harga > 0 ? ((hero.harga - hero.hpp) / hero.harga * 100) : 0;
 
   $('#heroBanner').innerHTML =
     '<div style="position:relative;z-index:1;min-width:0">' +
@@ -63,8 +62,6 @@ function renderHero() {
     '</div>' +
     '<div class="hero-visual">' +
       (hero.foto ? '<img src="' + esc(hero.foto) + '" alt="" onerror="this.style.display=\'none\'">' : '<i class="bi bi-cup-hot"></i>') +
-      '<span class="hero-hpp"><span class="dot-ok" style="animation:none"></span> HPP ' + rupiah(hero.hpp) +
-        ' · Margin ' + margin.toFixed(0) + '%</span>' +
     '</div>';
 }
 
@@ -275,7 +272,7 @@ function renderKeranjang() {
           '<div class="slip-item-price">' + rupiah(c.harga * c.qty) + '</div>' +
         '</div>' +
         '<div class="slip-item-bot">' +
-          '<span class="slip-item-hpp"><i class="bi bi-box-seam"></i> HPP ' + rupiah(c.hpp * c.qty) + '</span>' +
+          '<span class="slip-item-qty"><i class="bi bi-box-seam"></i> ' + angka(c.qty) + ' x ' + rupiah(c.harga) + '</span>' +
           '<div class="stepper">' +
             '<button class="step-btn" data-minus="' + c.idMenu + '"><i class="bi bi-dash"></i></button>' +
             '<input type="number" class="qty-input" data-qty="' + c.idMenu + '" value="' + c.qty + '" min="0" step="any" aria-label="Jumlah porsi">' +
@@ -300,7 +297,6 @@ function renderKeranjang() {
     (t.persen > 0
       ? '<div class="sum-row"><span>Pajak / Service (' + t.persen + '%)</span><b>' + rupiah(t.pajak) + '</b></div>'
       : '') +
-    '<div class="sum-row"><span>Estimasi HPP</span><b style="color:var(--text-3)">' + rupiah(t.hpp) + '</b></div>' +
     '<div class="sum-total"><span>Total Pembayaran</span><b>' + rupiah(t.total) + '</b></div>';
 
   const inp = $('#inpDiskon');
@@ -340,7 +336,7 @@ function perbaruiTampilanHutang() {
   if (catatan) {
     catatan.innerHTML = aktif
       ? '<i class="bi bi-exclamation-circle"></i> <span>Stok tetap berkurang · pendapatan diakui saat pelunasan</span>'
-      : '<i class="bi bi-check2-square"></i> <span>HPP resep &amp; stok bahan baku berkurang otomatis</span>';
+      : '<i class="bi bi-check2-square"></i> <span>Stok bahan baku berkurang otomatis sesuai resep</span>';
   }
 }
 
